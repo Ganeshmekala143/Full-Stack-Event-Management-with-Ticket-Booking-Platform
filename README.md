@@ -1,4 +1,3 @@
-# Full-Stack-Event-Management-with-Ticket-Booking-Platform
 # GatherGo - Event Management with Ticket Booking Platform
 
 GatherGo is a full-stack Event Management and Ticket Booking platform. Users can discover events, select interactive seat layouts, book tickets, simulate payments, view digital confirmed tickets with real-time QR code generation, and view booking history via a personalized dashboard. Organizers and Administrators have complete CRUD portals to manage events, venues, bookings, payments, and users.
