@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking History | GatherGo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background Shapes -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+            <span>Gather</span>Go
+        </a>
+        <ul class="nav-links" id="nav-links">
+            <!-- Dynamic navbar links -->
+        </ul>
+        <div class="nav-actions" id="nav-actions">
+            <!-- Dynamic auth actions -->
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container">
+        
+        <header style="margin-bottom: 3rem;">
+            <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">Your Booking History</h1>
+            <p style="color: var(--text-secondary);">View details of your tickets, upcoming events, and past experience logs.</p>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" id="tab-upcoming" onclick="switchTab('upcoming')">Upcoming Events</div>
+            <div class="tab" id="tab-past" onclick="switchTab('past')">Past Events</div>
+        </div>
+
+        <!-- Bookings Table/List wrapper -->
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Booking ID</th>
+                        <th>Event Name</th>
+                        <th>Booked Date</th>
+                        <th>Tickets</th>
+                        <th>Total Paid</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="bookings-table-body">
+                    <!-- Dynamic Rows -->
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+
+    <!-- Ticket QR Modal Overlay -->
+    <div class="modal-overlay" id="ticket-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 class="modal-title">E-Ticket Summary</h2>
+                <span class="modal-close" onclick="closeTicketModal()">&times;</span>
+            </div>
+            
+            <div style="text-align: center;">
+                <h3 id="modal-event-name" style="margin-bottom: 0.5rem; font-size: 1.4rem;">Tech Innovation Summit</h3>
+                <span class="event-badge" id="modal-event-category" style="margin-bottom: 1.5rem;">Conference</span>
+                
+                <div class="ticket-qr-container" style="background: white; border-radius: 8px;">
+                    <div id="modal-qr-code"></div>
+                    <div class="ticket-qr-label" id="modal-ticket-id">TICKET #000</div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: var(--radius-md); text-align: left; font-size: 0.95rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem;">
+                    <div><strong>Attendee:</strong></div>
+                    <div id="modal-user-name" style="text-align: right;">Rahul Sharma</div>
+                    <div><strong>Tickets count:</strong></div>
+                    <div id="modal-tickets-count" style="text-align: right;">2</div>
+                    <div><strong>Selected Seats:</strong></div>
+                    <div id="modal-seats" style="text-align: right; color: var(--accent);">A1, A2</div>
+                    <div><strong>Booking Date:</strong></div>
+                    <div id="modal-booking-date" style="text-align: right;">2026-08-20</div>
+                    <div><strong>Status:</strong></div>
+                    <div id="modal-status" style="text-align: right;"><span class="status-badge status-confirmed">Confirmed</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 GatherGo. All rights reserved. Made for Full Stack Event Management & Ticket Booking.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        checkAuth();
+
+        let allBookings = [];
+        let allEvents = [];
+        let activeTab = 'upcoming';
+
+        async function initHistoryPage() {
+            const user = getCurrentUser();
+            
+            try {
+                // Fetch bookings and events
+                const [bookings, events] = await Promise.all([
+                    apiFetch(`/bookings/?user_name=${encodeURIComponent(user.full_name)}`),
+                    apiFetch('/events/')
+                ]);
+
+                allBookings = bookings;
+                allEvents = events;
+
+                renderBookingsTable();
+            } catch (err) {
+                console.error("History page initialization failed:", err);
+            }
+        }
+
+        function switchTab(tabName) {
+            activeTab = tabName;
+            
+            document.getElementById('tab-upcoming').classList.remove('active');
+            document.getElementById('tab-past').classList.remove('active');
+            
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            renderBookingsTable();
+        }
+
+        function renderBookingsTable() {
+            const tbody = document.getElementById('bookings-table-body');
+            tbody.innerHTML = '';
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            // Filter bookings into upcoming/past based on event date
+            const filtered = allBookings.filter(booking => {
+                const event = allEvents.find(e => e.event_name === booking.event_name);
+                const eventDate = event ? event.event_date : todayStr;
+                
+                if (activeTab === 'upcoming') {
+                    return eventDate >= todayStr;
+                } else {
+                    return eventDate < todayStr;
+                }
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            <i class="fa-regular fa-folder-open" style="font-size: 2.5rem; margin-bottom: 1rem; display: block; color: var(--text-muted);"></i>
+                            No bookings found.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            filtered.forEach(booking => {
+                const badgeClass = booking.booking_status === 'Confirmed' ? 'status-confirmed' : 
+                                   booking.booking_status === 'Pending' ? 'status-pending' : 'status-cancelled';
+                
+                // Show cancel button only for Confirmed/Pending bookings in upcoming tab
+                const isUpcoming = activeTab === 'upcoming';
+                const canCancel = isUpcoming && booking.booking_status !== 'Cancelled';
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight: 700;">#${booking.booking_id}</td>
+                        <td style="font-weight: 600;">${booking.event_name}</td>
+                        <td>${booking.booking_date}</td>
+                        <td>${booking.number_of_tickets}</td>
+                        <td>₹${booking.total_amount}</td>
+                        <td><span class="status-badge ${badgeClass}">${booking.booking_status}</span></td>
+                        <td>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button onclick="openTicketModal(${booking.booking_id})" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.75rem;">
+                                    <i class="fa-solid fa-ticket"></i> View Ticket
+                                </button>
+                                ${canCancel ? `
+                                    <button onclick="cancelBooking(${booking.booking_id})" class="btn btn-danger btn-sm" style="padding: 0.35rem 0.75rem; background: transparent; border: 1px solid var(--danger); color: var(--danger);">
+                                        Cancel
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function cancelBooking(id) {
+            if (!confirm('Are you sure you want to cancel this booking? Tickets will be returned to availability.')) {
+                return;
+            }
+
+            try {
+                // Call booking update PUT API
+                await apiFetch(`/bookings/update/${id}/`, {
+                    method: 'PUT',
+                    body: { booking_status: 'Cancelled' }
+                });
+
+                showNotification('Booking cancelled successfully!');
+                initHistoryPage(); // Reload table
+            } catch (err) {
+                console.error("Cancellation failed:", err);
+            }
+        }
+
+        function openTicketModal(id) {
+            const booking = allBookings.find(b => b.booking_id === id);
+            const event = allEvents.find(e => e.event_name === booking.event_name);
+            const seats = JSON.parse(localStorage.getItem(`booking_seats_${id}`)) || ["General Admission"];
+
+            document.getElementById('modal-event-name').innerText = booking.event_name;
+            document.getElementById('modal-event-category').innerText = event ? event.category : 'Event';
+            document.getElementById('modal-ticket-id').innerText = `TICKET #${booking.booking_id}`;
+            document.getElementById('modal-user-name').innerText = booking.user_name;
+            document.getElementById('modal-tickets-count').innerText = booking.number_of_tickets;
+            document.getElementById('modal-seats').innerText = seats.join(', ');
+            document.getElementById('modal-booking-date').innerText = booking.booking_date;
+            
+            const badge = document.getElementById('modal-status');
+            const badgeClass = booking.booking_status === 'Confirmed' ? 'status-confirmed' : 
+                               booking.booking_status === 'Pending' ? 'status-pending' : 'status-cancelled';
+            badge.innerHTML = `<span class="status-badge ${badgeClass}">${booking.booking_status}</span>`;
+
+            // Load QR Code using URL api
+            const qrText = encodeURIComponent(JSON.stringify({
+                booking_id: booking.booking_id,
+                event_name: booking.event_name,
+                tickets: booking.number_of_tickets,
+                seats: seats
+            }));
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrText}`;
+            document.getElementById('modal-qr-code').innerHTML = `<img src="${qrUrl}" alt="QR Ticket" style="display: block; border-radius: 4px;">`;
+
+            document.getElementById('ticket-modal').classList.add('active');
+        }
+
+        function closeTicketModal() {
+            document.getElementById('ticket-modal').classList.remove('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', initHistoryPage);
+    </script>
+</body>
+</html>

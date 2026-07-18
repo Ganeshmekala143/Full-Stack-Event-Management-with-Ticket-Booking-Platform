@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Details | GatherGo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background Shapes -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+            <span>Gather</span>Go
+        </a>
+        <ul class="nav-links" id="nav-links">
+            <!-- Dynamic navbar links -->
+        </ul>
+        <div class="nav-actions" id="nav-actions">
+            <!-- Dynamic auth actions -->
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container">
+        <div id="event-details-content">
+            <!-- Loading Spinner -->
+            <div style="text-align: center; padding: 6rem 0;">
+                <i class="fa-solid fa-spinner fa-spin fa-2x" style="color: var(--primary); margin-bottom: 1rem;"></i>
+                <p>Loading event details...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 GatherGo. All rights reserved. Made for Full Stack Event Management & Ticket Booking.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = parseInt(urlParams.get('id'));
+
+        let selectedRating = 5;
+
+        async function loadEventDetails() {
+            if (!eventId) {
+                document.getElementById('event-details-content').innerHTML = `
+                    <div style="text-align: center; padding: 4rem;">
+                        <h2>Event not found</h2>
+                        <a href="events.html" class="btn btn-primary" style="margin-top: 1rem;">Back to Events</a>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                // Fetch events and venues
+                const [events, venues] = await Promise.all([
+                    apiFetch('/events/'),
+                    apiFetch('/venues/')
+                ]);
+
+                // Find matching event
+                const event = events.find(e => e.event_id === eventId);
+                if (!event) {
+                    document.getElementById('event-details-content').innerHTML = `
+                        <div style="text-align: center; padding: 4rem;">
+                            <h2>Event not found</h2>
+                            <a href="events.html" class="btn btn-primary" style="margin-top: 1rem;">Back to Events</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Find matching venue details
+                const venueInfo = venues.find(v => v.venue_name === event.venue) || {
+                    venue_name: event.venue,
+                    location: "Not Specified",
+                    city: "Not Specified",
+                    capacity: "N/A",
+                    contact_person: "N/A"
+                };
+
+                // Load reviews
+                const reviews = JSON.parse(localStorage.getItem(`event_reviews_${eventId}`)) || [
+                    { author: "Anjali Mehta", rating: 5, text: "Absolutely incredible! Well organized and highly engaging." },
+                    { author: "Vikram Sen", rating: 4, text: "Great speakers and insightful presentations. Highly recommended." }
+                ];
+                
+                // Calculate emoji based on category
+                let emoji = '📅';
+                if (event.category === 'Music Concert') emoji = '🎸';
+                else if (event.category === 'Workshop') emoji = '🛠️';
+                else if (event.category === 'Conference') emoji = '🎤';
+                else if (event.category === 'Seminar') emoji = '📚';
+                else if (event.category === 'Sports') emoji = '⚽';
+                else if (event.category === 'Cultural Event') emoji = '🎭';
+                else if (event.category === 'Comedy Show') emoji = '🎙️';
+
+                const mainContainer = document.getElementById('event-details-content');
+                mainContainer.innerHTML = `
+                    <div class="event-detail-grid">
+                        <!-- Main Content Left -->
+                        <div class="event-main">
+                            <div class="event-hero">
+                                <div class="event-hero-placeholder">${emoji}</div>
+                            </div>
+                            
+                            <span class="event-badge">${event.category}</span>
+                            <h1 class="event-details-title">${event.event_name}</h1>
+                            
+                            <div class="event-meta-info">
+                                <div class="meta-item">
+                                    <span class="meta-label">Date & Time</span>
+                                    <span class="meta-val">${event.event_date} at ${event.event_time}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Organizer</span>
+                                    <span class="meta-val">${event.organizer_name}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Venue</span>
+                                    <span class="meta-val">${venueInfo.venue_name}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="event-description">
+                                <h3>About the Event</h3>
+                                <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                                    This event brings together industry leaders, practitioners, and enthusiasts for an engaging experience. 
+                                    Attendees will get hands-on experience, networking opportunities, and insights from experienced professionals. 
+                                    Make sure to secure your booking early, as seat capacity is limited.
+                                </p>
+                                
+                                <h3>Venue & Location Details</h3>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: var(--radius-md); margin-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div>
+                                        <p style="color: var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase;">Address</p>
+                                        <p style="font-weight:600; margin-top:0.25rem;">${venueInfo.location}, ${venueInfo.city}</p>
+                                    </div>
+                                    <div>
+                                        <p style="color: var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase;">Seating Capacity</p>
+                                        <p style="font-weight:600; margin-top:0.25rem;">${venueInfo.capacity} Persons</p>
+                                    </div>
+                                    <div>
+                                        <p style="color: var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase;">Contact Person</p>
+                                        <p style="font-weight:600; margin-top:0.25rem;">${venueInfo.contact_person}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Review Section (Bonus) -->
+                            <div class="reviews-section">
+                                <h3 class="reviews-title">Reviews & Ratings (${reviews.length})</h3>
+                                
+                                <!-- Add Review Form -->
+                                <div class="add-review-form">
+                                    <h4 style="margin-bottom: 1rem;">Leave a Review</h4>
+                                    <div class="rating-input">
+                                        <i class="fa-solid fa-star rating-star active" data-rating="1" onclick="setRating(1)"></i>
+                                        <i class="fa-solid fa-star rating-star active" data-rating="2" onclick="setRating(2)"></i>
+                                        <i class="fa-solid fa-star rating-star active" data-rating="3" onclick="setRating(3)"></i>
+                                        <i class="fa-solid fa-star rating-star active" data-rating="4" onclick="setRating(4)"></i>
+                                        <i class="fa-solid fa-star rating-star active" data-rating="5" onclick="setRating(5)"></i>
+                                    </div>
+                                    <div class="form-group">
+                                        <textarea id="review-text-input" class="form-input" placeholder="Share your experience..." rows="3" style="resize: none;"></textarea>
+                                    </div>
+                                    <button onclick="submitReview()" class="btn btn-secondary btn-sm">Submit Review</button>
+                                </div>
+
+                                <!-- Review List -->
+                                <div class="review-list" id="review-list">
+                                    ${reviews.map(r => `
+                                        <div class="review-item">
+                                            <div class="review-header">
+                                                <span class="review-author">${r.author}</span>
+                                                <div class="review-stars">
+                                                    ${Array.from({ length: 5 }, (_, i) => `
+                                                        <i class="fa-${i < r.rating ? 'solid' : 'regular'} fa-star"></i>
+                                                    `).join('')}
+                                                </div>
+                                            </div>
+                                            <p style="color: var(--text-secondary); font-size: 0.95rem;">${r.text}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sidebar Right -->
+                        <div class="sidebar-card">
+                            <h3 style="font-size: 1.1rem; color: var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; margin-bottom: 0.5rem;">Ticket Price</h3>
+                            <div class="sidebar-price">
+                                ₹${event.ticket_price}<span>/ticket</span>
+                            </div>
+                            
+                            <div class="sidebar-tickets">
+                                <span>Availability</span>
+                                <span style="font-weight: 700; color: ${event.available_tickets > 0 ? 'var(--success)' : 'var(--danger)'};">
+                                    ${event.available_tickets > 0 ? `${event.available_tickets} Tickets Left` : 'Sold Out'}
+                                </span>
+                            </div>
+
+                            <button onclick="handleBookRedirect(${event.event_id})" class="btn btn-primary" style="width: 100%;" ${event.available_tickets > 0 ? '' : 'disabled'}>
+                                ${event.available_tickets > 0 ? 'Book Tickets' : 'Sold Out'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                console.error("Failed to load details:", err);
+            }
+        }
+
+        function setRating(rating) {
+            selectedRating = rating;
+            const stars = document.querySelectorAll('.rating-star');
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+
+        function submitReview() {
+            const user = getCurrentUser();
+            if (!user) {
+                showNotification("Please login to submit a review.");
+                setTimeout(() => { window.location.href = "login.html"; }, 1500);
+                return;
+            }
+
+            const textInput = document.getElementById('review-text-input');
+            const text = textInput.value.trim();
+            if (!text) {
+                showNotification("Please write some review text.");
+                return;
+            }
+
+            const newReview = {
+                author: user.full_name,
+                rating: selectedRating,
+                text: text
+            };
+
+            const reviews = JSON.parse(localStorage.getItem(`event_reviews_${eventId}`)) || [
+                { author: "Anjali Mehta", rating: 5, text: "Absolutely incredible! Well organized and highly engaging." },
+                { author: "Vikram Sen", rating: 4, text: "Great speakers and insightful presentations. Highly recommended." }
+            ];
+
+            reviews.unshift(newReview);
+            localStorage.setItem(`event_reviews_${eventId}`, JSON.stringify(reviews));
+            
+            // Clear input and reload
+            textInput.value = '';
+            setRating(5);
+            loadEventDetails();
+            showNotification("Review added successfully!");
+        }
+
+        function handleBookRedirect(id) {
+            const user = getCurrentUser();
+            if (!user) {
+                showNotification("Please login first to book tickets.");
+                setTimeout(() => { window.location.href = "login.html"; }, 1500);
+                return;
+            }
+            window.location.href = `booking.html?event_id=${id}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', loadEventDetails);
+    </script>
+</body>
+</html>

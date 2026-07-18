@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Checkout | GatherGo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background Shapes -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+            <span>Gather</span>Go
+        </a>
+        <ul class="nav-links" id="nav-links">
+            <!-- Dynamic navbar links -->
+        </ul>
+        <div class="nav-actions" id="nav-actions">
+            <!-- Dynamic auth actions -->
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container">
+        <div class="booking-container">
+            <header style="margin-bottom: 2rem;">
+                <h1 style="font-size: 2rem; font-weight: 800;">Secure Checkout</h1>
+                <p style="color: var(--text-secondary);">Select your preferred payment option and finalize payment.</p>
+            </header>
+
+            <div class="grid" style="grid-template-columns: 1fr; gap: 2rem;" id="checkout-view">
+                
+                <!-- Payment Summary -->
+                <div class="event-main" style="padding: 2rem;">
+                    <h3>Order Summary</h3>
+                    <div style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;" id="order-summary-content">
+                        <!-- Loaded by JS -->
+                    </div>
+                </div>
+
+                <!-- Payment Methods -->
+                <div class="event-main" style="padding: 2rem;">
+                    <h3 style="margin-bottom: 1.5rem;">Select Payment Method</h3>
+                    
+                    <div class="payment-methods-grid">
+                        <div class="payment-method-card selected" onclick="selectPaymentMethod('UPI', this)">
+                            <div class="payment-method-icon" style="color: var(--accent);"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                            <div class="payment-method-name">UPI / QR</div>
+                        </div>
+                        <div class="payment-method-card" onclick="selectPaymentMethod('Credit Card', this)">
+                            <div class="payment-method-icon" style="color: var(--primary);"><i class="fa-regular fa-credit-card"></i></div>
+                            <div class="payment-method-name">Credit Card</div>
+                        </div>
+                        <div class="payment-method-card" onclick="selectPaymentMethod('Debit Card', this)">
+                            <div class="payment-method-icon" style="color: var(--primary);"><i class="fa-solid fa-credit-card"></i></div>
+                            <div class="payment-method-name">Debit Card</div>
+                        </div>
+                        <div class="payment-method-card" onclick="selectPaymentMethod('Net Banking', this)">
+                            <div class="payment-method-icon" style="color: #3b82f6;"><i class="fa-solid fa-building-columns"></i></div>
+                            <div class="payment-method-name">Net Banking</div>
+                        </div>
+                        <div class="payment-method-card" onclick="selectPaymentMethod('Wallet', this)">
+                            <div class="payment-method-icon" style="color: #ec4899;"><i class="fa-solid fa-wallet"></i></div>
+                            <div class="payment-method-name">Wallet</div>
+                        </div>
+                    </div>
+
+                    <!-- Payment details inputs simulated -->
+                    <div id="method-details-form" style="margin-bottom: 2rem;">
+                        <!-- Custom subforms if needed (e.g. UPI ID or Card details) -->
+                        <div class="form-group">
+                            <label class="form-label" id="method-input-label">Enter UPI ID</label>
+                            <input type="text" id="payment-credentials" class="form-input" placeholder="username@upi" required>
+                        </div>
+                    </div>
+
+                    <button onclick="processPayment()" class="btn btn-primary" style="width: 100%;" id="pay-now-btn">
+                        Pay & Confirm Booking
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Success Booking/Payment -->
+    <div class="modal-overlay" id="payment-success-modal">
+        <div class="modal-container" style="text-align: center;">
+            <div style="color: var(--success); font-size: 4rem; margin-bottom: 1rem;">
+                <i class="fa-regular fa-circle-check"></i>
+            </div>
+            <h2 class="modal-title" style="margin-bottom: 0.5rem;">Booking Confirmed!</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Your transaction was successful. Show the digital QR ticket below at the entrance.</p>
+            
+            <!-- QR Ticket Container (Bonus Feature) -->
+            <div class="ticket-qr-container">
+                <div id="success-qr-code"></div>
+                <div class="ticket-qr-label" id="success-qr-label">TICKET #000</div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; text-align: left; font-size: 0.9rem;">
+                <div><strong>Transaction ID:</strong></div>
+                <div id="success-txn-id" style="text-align: right; color: var(--accent);">TXN123</div>
+                <div><strong>Tickets:</strong></div>
+                <div id="success-tickets-count" style="text-align: right;">1</div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <a href="booking_history.html" class="btn btn-secondary btn-sm">View Booking History</a>
+                <a href="index.html" class="btn btn-primary btn-sm">Go to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 GatherGo. All rights reserved. Made for Full Stack Event Management & Ticket Booking.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        checkAuth();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookingId = parseInt(urlParams.get('booking_id'));
+        let selectedBooking = null;
+        let selectedMethod = 'UPI';
+
+        async function initPaymentPage() {
+            if (!bookingId) {
+                showNotification('No booking ID specified.');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            try {
+                // Fetch booking details
+                const bookings = await apiFetch('/bookings/');
+                selectedBooking = bookings.find(b => b.booking_id === bookingId);
+                
+                if (!selectedBooking) {
+                    showNotification('Booking not found.');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                // Render summary
+                const container = document.getElementById('order-summary-content');
+                container.innerHTML = `
+                    <div class="summary-row">
+                        <span>Event</span>
+                        <span style="font-weight: 600;">${selectedBooking.event_name}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Ticket Holder</span>
+                        <span>${selectedBooking.user_name}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Number of Tickets</span>
+                        <span style="font-weight: 600;">${selectedBooking.number_of_tickets}</span>
+                    </div>
+                    <div class="summary-row" style="border-bottom: none; font-size:1.15rem; font-weight:700; padding-top:1rem;">
+                        <span>Amount to Pay</span>
+                        <span style="color: var(--accent);">₹${selectedBooking.total_amount}</span>
+                    </div>
+                `;
+            } catch (err) {
+                console.error("Payment init error:", err);
+            }
+        }
+
+        function selectPaymentMethod(method, el) {
+            selectedMethod = method;
+            
+            // Highlight selected card
+            document.querySelectorAll('.payment-method-card').forEach(card => card.classList.remove('selected'));
+            el.classList.add('selected');
+
+            // Render custom placeholder form fields
+            const inputLabel = document.getElementById('method-input-label');
+            const inputField = document.getElementById('payment-credentials');
+            
+            if (method === 'UPI') {
+                inputLabel.innerText = "Enter UPI ID";
+                inputField.placeholder = "username@upi";
+                inputField.type = "text";
+            } else if (method === 'Credit Card' || method === 'Debit Card') {
+                inputLabel.innerText = "Card Number";
+                inputField.placeholder = "1234 5678 1234 5678";
+                inputField.type = "text";
+            } else if (method === 'Net Banking') {
+                inputLabel.innerText = "Customer ID / Bank Username";
+                inputField.placeholder = "Customer username or ID";
+                inputField.type = "text";
+            } else {
+                inputLabel.innerText = "Wallet Phone Number";
+                inputField.placeholder = "9876543210";
+                inputField.type = "tel";
+            }
+        }
+
+        async function processPayment() {
+            const credentialField = document.getElementById('payment-credentials');
+            if (!credentialField.value.trim()) {
+                showNotification(`Please enter valid ${selectedMethod} details.`);
+                return;
+            }
+
+            const payBtn = document.getElementById('pay-now-btn');
+            payBtn.innerText = "Processing Payment...";
+            payBtn.disabled = true;
+
+            const txnId = `TXN${Math.floor(100000000 + Math.random() * 900000000)}`;
+            const today = new Date().toISOString().split('T')[0];
+
+            const paymentPayload = {
+                booking_id: selectedBooking.booking_id,
+                user_name: selectedBooking.user_name,
+                amount: selectedBooking.total_amount,
+                payment_method: selectedMethod,
+                payment_status: 'Success',
+                transaction_id: txnId,
+                payment_date: today
+            };
+
+            try {
+                // Post payment (automatically marks booking confirmed on successful payment post)
+                const payment = await apiFetch('/payments/add/', {
+                    method: 'POST',
+                    body: paymentPayload
+                });
+
+                // Generate QR Code URL using free reliable CDN QR API
+                const qrText = encodeURIComponent(JSON.stringify({
+                    booking_id: selectedBooking.booking_id,
+                    event_name: selectedBooking.event_name,
+                    tickets: selectedBooking.number_of_tickets,
+                    txn: txnId
+                }));
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrText}`;
+
+                // Populate Modal details
+                document.getElementById('success-txn-id').innerText = txnId;
+                document.getElementById('success-tickets-count').innerText = selectedBooking.number_of_tickets;
+                document.getElementById('success-qr-label').innerText = `TICKET #${selectedBooking.booking_id}`;
+                document.getElementById('success-qr-code').innerHTML = `<img src="${qrUrl}" alt="Ticket QR Code" style="display: block; border-radius: 8px;">`;
+
+                // Display Confirmation Modal
+                document.getElementById('payment-success-modal').classList.add('active');
+            } catch (err) {
+                console.error("Payment submission failed:", err);
+                payBtn.innerText = "Pay & Confirm Booking";
+                payBtn.disabled = false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initPaymentPage);
+    </script>
+</body>
+</html>

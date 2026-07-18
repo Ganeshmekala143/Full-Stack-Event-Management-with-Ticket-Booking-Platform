@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Tickets | GatherGo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background Shapes -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+            <span>Gather</span>Go
+        </a>
+        <ul class="nav-links" id="nav-links">
+            <!-- Dynamic navbar links -->
+        </ul>
+        <div class="nav-actions" id="nav-actions">
+            <!-- Dynamic auth actions -->
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container">
+        <div class="booking-container">
+            <header style="margin-bottom: 2rem;">
+                <h1 style="font-size: 2rem; font-weight: 800;">Book Your Tickets</h1>
+                <p style="color: var(--text-secondary);" id="booking-event-subtitle">Select seats and confirm your booking details.</p>
+            </header>
+
+            <div class="grid" style="grid-template-columns: 1fr; gap: 2rem;">
+                
+                <!-- Seat Selection (Bonus) -->
+                <div class="event-main" style="padding: 2rem;">
+                    <h3 style="margin-bottom: 1.5rem;">Select Your Seats</h3>
+                    
+                    <div class="seat-selection-wrapper">
+                        <div class="screen-indicator">STAGE / SCREEN</div>
+                        
+                        <!-- Grid of 24 Seats -->
+                        <div class="seats-grid" id="seats-grid">
+                            <!-- Populated by JS -->
+                        </div>
+                        
+                        <!-- Legend -->
+                        <div class="seat-legend">
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);"></div>
+                                <span>Available</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: var(--primary); border: 1px solid var(--primary);"></div>
+                                <span>Selected</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: rgba(255,255,255,0.03); opacity:0.4;"></div>
+                                <span>Occupied</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Booking Summary Form -->
+                <div class="event-main" style="padding: 2rem;">
+                    <h3>Attendee & Booking Info</h3>
+                    <div style="margin-top: 1.5rem;">
+                        <div class="form-group">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" id="booking-fullname" class="form-input" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Event Name</label>
+                            <input type="text" id="booking-eventname" class="form-input" readonly>
+                        </div>
+                        
+                        <!-- Booking Summary -->
+                        <div class="booking-summary-card">
+                            <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Summary</h4>
+                            
+                            <div class="summary-row">
+                                <span>Ticket Price</span>
+                                <span id="summary-single-price">₹0</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Number of Tickets</span>
+                                <span id="summary-ticket-count">0</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Selected Seats</span>
+                                <span id="summary-seats">None</span>
+                            </div>
+                            <div class="summary-row total">
+                                <span>Total Amount</span>
+                                <span id="summary-total-price" style="color: var(--accent);">₹0</span>
+                            </div>
+                        </div>
+
+                        <button onclick="confirmBooking()" class="btn btn-primary" style="width: 100%; margin-top: 2rem;" id="confirm-booking-btn" disabled>
+                            Confirm Booking
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 GatherGo. All rights reserved. Made for Full Stack Event Management & Ticket Booking.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        checkAuth(); // Route protection
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = parseInt(urlParams.get('event_id'));
+        let selectedEvent = null;
+        let selectedSeats = new Set();
+        let ticketPrice = 0;
+
+        // Mock occupied seats
+        const occupiedSeats = new Set(['A3', 'B2', 'C6', 'C7']);
+
+        async function initBookingPage() {
+            if (!eventId) {
+                showNotification('No event specified.');
+                window.location.href = 'events.html';
+                return;
+            }
+
+            const user = getCurrentUser();
+            document.getElementById('booking-fullname').value = user.full_name;
+
+            try {
+                // Fetch details of event
+                const events = await apiFetch('/events/');
+                selectedEvent = events.find(e => e.event_id === eventId);
+                
+                if (!selectedEvent) {
+                    showNotification('Event not found.');
+                    window.location.href = 'events.html';
+                    return;
+                }
+
+                document.getElementById('booking-eventname').value = selectedEvent.event_name;
+                document.getElementById('booking-event-subtitle').innerText = `Booking for: ${selectedEvent.event_name}`;
+                
+                ticketPrice = selectedEvent.ticket_price;
+                document.getElementById('summary-single-price').innerText = `₹${ticketPrice}`;
+
+                // Render seats
+                renderSeatsGrid();
+                updateSummary();
+            } catch (err) {
+                console.error("Booking page init error:", err);
+            }
+        }
+
+        function renderSeatsGrid() {
+            const grid = document.getElementById('seats-grid');
+            grid.innerHTML = '';
+            
+            const rows = ['A', 'B', 'C'];
+            const cols = 8;
+            
+            rows.forEach(row => {
+                for (let col = 1; col <= cols; col++) {
+                    const seatId = `${row}${col}`;
+                    const isOccupied = occupiedSeats.has(seatId);
+                    
+                    const seatEl = document.createElement('div');
+                    seatEl.className = `seat ${isOccupied ? 'occupied' : ''}`;
+                    seatEl.innerText = seatId;
+                    
+                    if (!isOccupied) {
+                        seatEl.onclick = () => toggleSeat(seatId, seatEl);
+                    }
+                    grid.appendChild(seatEl);
+                }
+            });
+        }
+
+        function toggleSeat(seatId, el) {
+            if (selectedSeats.has(seatId)) {
+                selectedSeats.delete(seatId);
+                el.classList.remove('selected');
+            } else {
+                // Ensure they don't book more than capacity or default limit (e.g. 5 tickets per user)
+                if (selectedSeats.size >= 5) {
+                    showNotification('You can book a maximum of 5 tickets at once.');
+                    return;
+                }
+                
+                // Also check event availability
+                if (selectedSeats.size >= selectedEvent.available_tickets) {
+                    showNotification(`Only ${selectedEvent.available_tickets} tickets available.`);
+                    return;
+                }
+                
+                selectedSeats.add(seatId);
+                el.classList.add('selected');
+            }
+            
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const count = selectedSeats.size;
+            const total = count * ticketPrice;
+            const seatsArray = Array.from(selectedSeats);
+            
+            document.getElementById('summary-ticket-count').innerText = count;
+            document.getElementById('summary-seats').innerText = seatsArray.length > 0 ? seatsArray.join(', ') : 'None';
+            document.getElementById('summary-total-price').innerText = `₹${total}`;
+            
+            const btn = document.getElementById('confirm-booking-btn');
+            if (count > 0) {
+                btn.disabled = false;
+            } else {
+                btn.disabled = true;
+            }
+        }
+
+        async function confirmBooking() {
+            const user = getCurrentUser();
+            const count = selectedSeats.size;
+            const total = count * ticketPrice;
+            const today = new Date().toISOString().split('T')[0];
+
+            const bookingPayload = {
+                user_name: user.full_name,
+                event_name: selectedEvent.event_name,
+                booking_date: today,
+                number_of_tickets: count,
+                total_amount: total,
+                booking_status: 'Pending' // Will remain Pending until Payment is successfully posted
+            };
+
+            try {
+                const booking = await apiFetch('/bookings/add/', {
+                    method: 'POST',
+                    body: bookingPayload
+                });
+
+                // Store selected seats locally for this booking summary
+                localStorage.setItem(`booking_seats_${booking.booking_id}`, JSON.stringify(Array.from(selectedSeats)));
+
+                showNotification('Booking initiated! Redirecting to checkout...');
+                
+                setTimeout(() => {
+                    window.location.href = `payment.html?booking_id=${booking.booking_id}`;
+                }, 1000);
+            } catch (err) {
+                console.error("Booking error:", err);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initBookingPage);
+    </script>
+</body>
+</html>

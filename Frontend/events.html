@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explore Events | GatherGo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background Shapes -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+            <span>Gather</span>Go
+        </a>
+        <ul class="nav-links" id="nav-links">
+            <!-- Dynamic navbar links -->
+        </ul>
+        <div class="nav-actions" id="nav-actions">
+            <!-- Dynamic auth actions -->
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container">
+        
+        <header style="margin-bottom: 3rem; text-align: center;">
+            <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">Browse All Events</h1>
+            <p style="color: var(--text-secondary);">Find the perfect experience, workshop, or conference</p>
+        </header>
+
+        <!-- Filters Section -->
+        <section style="display: flex; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 280px; position: relative;">
+                <input type="text" id="search-input" class="form-input" placeholder="Search by event name, description, venue..." style="padding-left: 2.75rem;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+            </div>
+            <div style="width: 200px;">
+                <select id="category-filter" class="form-select" onchange="fetchFilteredEvents()">
+                    <option value="">All Categories</option>
+                    <option value="Music Concert">Music Concert</option>
+                    <option value="Workshop">Workshop</option>
+                    <option value="Conference">Conference</option>
+                    <option value="Seminar">Seminar</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Cultural Event">Cultural Event</option>
+                    <option value="Comedy Show">Comedy Show</option>
+                </select>
+            </div>
+            <button onclick="clearFilters()" class="btn btn-secondary">Clear</button>
+        </section>
+
+        <!-- Events Grid -->
+        <section class="grid" id="events-grid">
+            <!-- Dynamic Event Cards will be rendered here -->
+            <div style="grid-column: 1/-1; text-align: center; padding: 4rem 0; color: var(--text-secondary);">
+                <i class="fa-solid fa-spinner fa-spin" style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--primary);"></i>
+                <p>Loading events...</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 GatherGo. All rights reserved. Made for Full Stack Event Management & Ticket Booking.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        // Read URL query params on page load
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialSearch = urlParams.get('search') || '';
+        const initialCategory = urlParams.get('category') || '';
+
+        // Fetch and display events
+        async function fetchFilteredEvents() {
+            const searchVal = document.getElementById('search-input').value.trim();
+            const categoryVal = document.getElementById('category-filter').value;
+            
+            // Build request query string
+            let queryParams = [];
+            if (searchVal) queryParams.push(`search=${encodeURIComponent(searchVal)}`);
+            if (categoryVal) queryParams.push(`category=${encodeURIComponent(categoryVal)}`);
+            
+            const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+            
+            try {
+                const events = await apiFetch(`/events/${queryString}`);
+                const grid = document.getElementById('events-grid');
+                grid.innerHTML = '';
+                
+                if (events.length === 0) {
+                    grid.innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; padding: 5rem 0; color: var(--text-secondary);">
+                            <i class="fa-solid fa-calendar-xmark" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--text-muted);"></i>
+                            <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">No Events Found</h3>
+                            <p>Try adjusting your search criteria or filters.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                events.forEach(event => {
+                    // Set category emojis
+                    let emoji = '📅';
+                    if (event.category === 'Music Concert') emoji = '🎸';
+                    else if (event.category === 'Workshop') emoji = '🛠️';
+                    else if (event.category === 'Conference') emoji = '🎤';
+                    else if (event.category === 'Seminar') emoji = '📚';
+                    else if (event.category === 'Sports') emoji = '⚽';
+                    else if (event.category === 'Cultural Event') emoji = '🎭';
+                    else if (event.category === 'Comedy Show') emoji = '🎙️';
+                    
+                    grid.innerHTML += `
+                        <div class="card">
+                            <div class="card-img-container">
+                                <div class="card-img-placeholder">${emoji}</div>
+                                <span class="card-category">${event.category}</span>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="card-title">${event.event_name}</h3>
+                                <div class="card-meta">
+                                    <i class="fa-solid fa-calendar-days"></i>
+                                    <span>${event.event_date} at ${event.event_time}</span>
+                                </div>
+                                <div class="card-meta">
+                                    <i class="fa-solid fa-location-dot"></i>
+                                    <span>${event.venue}</span>
+                                </div>
+                                <div class="card-meta">
+                                    <i class="fa-solid fa-ticket"></i>
+                                    <span>${event.available_tickets} tickets left</span>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <div class="card-price">
+                                    ₹${event.ticket_price}<span>/ticket</span>
+                                </div>
+                                <a href="event_details.html?id=${event.event_id}" class="btn btn-primary btn-sm">Book Now</a>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (err) {
+                console.error("Error loading events:", err);
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('category-filter').value = '';
+            fetchFilteredEvents();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Apply initial filters from URL
+            document.getElementById('search-input').value = initialSearch;
+            document.getElementById('category-filter').value = initialCategory;
+            
+            fetchFilteredEvents();
+            
+            // Search input debounce/enter
+            document.getElementById('search-input').addEventListener('input', fetchFilteredEvents);
+        });
+    </script>
+</body>
+</html>

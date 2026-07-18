@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | GatherGo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background Shapes -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+            <span>Gather</span>Go
+        </a>
+        <ul class="nav-links" id="nav-links">
+            <!-- Dynamic navbar links -->
+        </ul>
+        <div class="nav-actions" id="nav-actions">
+            <!-- Dynamic auth actions -->
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container">
+        
+        <header style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">Admin Control Center</h1>
+                <p style="color: var(--text-secondary);">Manage global database records for all users, events, venues, bookings, and payments.</p>
+            </div>
+            <div>
+                <button id="add-entity-btn" onclick="openCreateModal()" class="btn btn-primary">
+                    <i class="fa-solid fa-plus"></i> Add New Record
+                </button>
+            </div>
+        </header>
+
+        <!-- Admin Category Tabs -->
+        <div class="tabs">
+            <div class="tab active" id="tab-users" onclick="switchAdminTab('users')">Users</div>
+            <div class="tab" id="tab-events" onclick="switchAdminTab('events')">Events</div>
+            <div class="tab" id="tab-venues" onclick="switchAdminTab('venues')">Venues</div>
+            <div class="tab" id="tab-bookings" onclick="switchAdminTab('bookings')">Bookings</div>
+            <div class="tab" id="tab-payments" onclick="switchAdminTab('payments')">Payments</div>
+        </div>
+
+        <!-- Dynamic Admin Tables -->
+        <div class="table-wrapper">
+            <table id="admin-table">
+                <thead id="admin-table-head">
+                    <!-- Loaded dynamically -->
+                </thead>
+                <tbody id="admin-table-body">
+                    <!-- Loaded dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+
+    <!-- Modal Form for Admin CRUD -->
+    <div class="modal-overlay" id="admin-crud-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 class="modal-title" id="admin-modal-title">Add/Edit Record</h2>
+                <span class="modal-close" onclick="closeAdminModal()">&times;</span>
+            </div>
+            
+            <form id="admin-form" onsubmit="handleAdminFormSubmit(event)">
+                <!-- Form Inputs will be dynamically injected here depending on the active tab -->
+                <div id="dynamic-form-fields"></div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 2rem;">
+                    Submit Details
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 GatherGo. All rights reserved. Made for Full Stack Event Management & Ticket Booking.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        checkAuth('admin'); // Protect routing
+
+        let activeTab = 'users';
+        let usersData = [];
+        let eventsData = [];
+        let venuesData = [];
+        let bookingsData = [];
+        let paymentsData = [];
+
+        // Edit IDs tracking
+        let currentEditId = null;
+
+        async function initAdminPanel() {
+            try {
+                // Fetch all data from APIs
+                const [users, events, venues, bookings, payments] = await Promise.all([
+                    apiFetch('/users/'),
+                    apiFetch('/events/'),
+                    apiFetch('/venues/'),
+                    apiFetch('/bookings/'),
+                    apiFetch('/payments/')
+                ]);
+
+                usersData = users;
+                eventsData = events;
+                venuesData = venues;
+                bookingsData = bookings;
+                paymentsData = payments;
+
+                renderAdminData();
+            } catch (err) {
+                console.error("Admin dashboard initialization failed:", err);
+            }
+        }
+
+        function switchAdminTab(tabName) {
+            activeTab = tabName;
+            
+            // Switch tabs classes
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            // Hide/Show Add Record button for Payments (usually payments shouldn't be added directly by Admin, but we support it if requested)
+            const addBtn = document.getElementById('add-entity-btn');
+            if (tabName === 'payments' || tabName === 'bookings') {
+                addBtn.style.display = 'none'; // Bookings/Payments are generated by workflows, but edit/delete is supported
+            } else {
+                addBtn.style.display = 'block';
+            }
+
+            renderAdminData();
+        }
+
+        function renderAdminData() {
+            const thead = document.getElementById('admin-table-head');
+            const tbody = document.getElementById('admin-table-body');
+            
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            if (activeTab === 'users') {
+                thead.innerHTML = `
+                    <tr>
+                        <th>User ID</th>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>City</th>
+                        <th>Password</th>
+                        <th>Actions</th>
+                    </tr>
+                `;
+                
+                if (usersData.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">No users registered.</td></tr>`;
+                    return;
+                }
+                
+                usersData.forEach(u => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight:700;">#${u.user_id}</td>
+                            <td style="font-weight:600;">${u.full_name}</td>
+                            <td>${u.email}</td>
+                            <td>${u.phone}</td>
+                            <td>${u.city}</td>
+                            <td><code>${u.password}</code></td>
+                            <td>
+                                <div style="display:flex; gap:0.5rem;">
+                                    <button onclick="openEditModal('users', ${u.user_id})" class="btn btn-secondary btn-sm" style="padding:0.3rem 0.6rem;"><i class="fa-solid fa-edit"></i></button>
+                                    <button onclick="deleteRecord('users', ${u.user_id})" class="btn btn-danger btn-sm" style="padding:0.3rem 0.6rem; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else if (activeTab === 'events') {
+                thead.innerHTML = `
+                    <tr>
+                        <th>Event ID</th>
+                        <th>Event Name</th>
+                        <th>Category</th>
+                        <th>Organizer</th>
+                        <th>Date & Time</th>
+                        <th>Venue</th>
+                        <th>Price</th>
+                        <th>Tickets Left</th>
+                        <th>Actions</th>
+                    </tr>
+                `;
+                
+                if (eventsData.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No events published.</td></tr>`;
+                    return;
+                }
+                
+                eventsData.forEach(e => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight:700;">#${e.event_id}</td>
+                            <td style="font-weight:600;">${e.event_name}</td>
+                            <td><span class="event-badge" style="margin:0; padding:0.25rem 0.6rem; font-size:0.75rem;">${e.category}</span></td>
+                            <td>${e.organizer_name}</td>
+                            <td>${e.event_date} @ ${e.event_time}</td>
+                            <td>${e.venue}</td>
+                            <td>₹${e.ticket_price}</td>
+                            <td>${e.available_tickets}</td>
+                            <td>
+                                <div style="display:flex; gap:0.5rem;">
+                                    <button onclick="openEditModal('events', ${e.event_id})" class="btn btn-secondary btn-sm" style="padding:0.3rem 0.6rem;"><i class="fa-solid fa-edit"></i></button>
+                                    <button onclick="deleteRecord('events', ${e.event_id})" class="btn btn-danger btn-sm" style="padding:0.3rem 0.6rem; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else if (activeTab === 'venues') {
+                thead.innerHTML = `
+                    <tr>
+                        <th>Venue ID</th>
+                        <th>Venue Name</th>
+                        <th>Location</th>
+                        <th>City</th>
+                        <th>Capacity</th>
+                        <th>Contact Person</th>
+                        <th>Actions</th>
+                    </tr>
+                `;
+                
+                if (venuesData.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">No venues defined.</td></tr>`;
+                    return;
+                }
+                
+                venuesData.forEach(v => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight:700;">#${v.venue_id}</td>
+                            <td style="font-weight:600;">${v.venue_name}</td>
+                            <td>${v.location}</td>
+                            <td>${v.city}</td>
+                            <td>${v.capacity}</td>
+                            <td>${v.contact_person}</td>
+                            <td>
+                                <div style="display:flex; gap:0.5rem;">
+                                    <button onclick="openEditModal('venues', ${v.venue_id})" class="btn btn-secondary btn-sm" style="padding:0.3rem 0.6rem;"><i class="fa-solid fa-edit"></i></button>
+                                    <button onclick="deleteRecord('venues', ${v.venue_id})" class="btn btn-danger btn-sm" style="padding:0.3rem 0.6rem; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else if (activeTab === 'bookings') {
+                thead.innerHTML = `
+                    <tr>
+                        <th>Booking ID</th>
+                        <th>User Name</th>
+                        <th>Event Name</th>
+                        <th>Booking Date</th>
+                        <th>Tickets</th>
+                        <th>Total Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                `;
+                
+                if (bookingsData.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No bookings found.</td></tr>`;
+                    return;
+                }
+                
+                bookingsData.forEach(b => {
+                    const badgeClass = b.booking_status === 'Confirmed' ? 'status-confirmed' :
+                                       b.booking_status === 'Pending' ? 'status-pending' : 'status-cancelled';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight:700;">#${b.booking_id}</td>
+                            <td style="font-weight:600;">${b.user_name}</td>
+                            <td>${b.event_name}</td>
+                            <td>${b.booking_date}</td>
+                            <td>${b.number_of_tickets}</td>
+                            <td>₹${b.total_amount}</td>
+                            <td><span class="status-badge ${badgeClass}">${b.booking_status}</span></td>
+                            <td>
+                                <div style="display:flex; gap:0.5rem;">
+                                    <button onclick="openEditModal('bookings', ${b.booking_id})" class="btn btn-secondary btn-sm" style="padding:0.3rem 0.6rem;"><i class="fa-solid fa-edit"></i></button>
+                                    <button onclick="deleteRecord('bookings', ${b.booking_id})" class="btn btn-danger btn-sm" style="padding:0.3rem 0.6rem; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else if (activeTab === 'payments') {
+                thead.innerHTML = `
+                    <tr>
+                        <th>Payment ID</th>
+                        <th>Booking ID</th>
+                        <th>User Name</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Transaction ID</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                `;
+                
+                if (paymentsData.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No payments processed.</td></tr>`;
+                    return;
+                }
+                
+                paymentsData.forEach(p => {
+                    const badgeClass = p.payment_status === 'Success' ? 'status-success' :
+                                       p.payment_status === 'Pending' ? 'status-pending' : 'status-failed';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight:700;">#${p.payment_id}</td>
+                            <td style="font-weight:700;">#${p.booking_id}</td>
+                            <td style="font-weight:600;">${p.user_name}</td>
+                            <td>₹${p.amount}</td>
+                            <td>${p.payment_method}</td>
+                            <td style="color:var(--accent); font-weight:600;">${p.transaction_id}</td>
+                            <td>${p.payment_date}</td>
+                            <td><span class="status-badge ${badgeClass}">${p.payment_status}</span></td>
+                            <td>
+                                <div style="display:flex; gap:0.5rem;">
+                                    <button onclick="openEditModal('payments', ${p.payment_id})" class="btn btn-secondary btn-sm" style="padding:0.3rem 0.6rem;"><i class="fa-solid fa-edit"></i></button>
+                                    <button onclick="deleteRecord('payments', ${p.payment_id})" class="btn btn-danger btn-sm" style="padding:0.3rem 0.6rem; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        function openCreateModal() {
+            currentEditId = null;
+            document.getElementById('admin-modal-title').innerText = `Add New ${activeTab.slice(0, -1).toUpperCase()}`;
+            generateFormFields();
+            document.getElementById('admin-crud-modal').classList.add('active');
+        }
+
+        function openEditModal(tab, id) {
+            currentEditId = id;
+            document.getElementById('admin-modal-title').innerText = `Edit ${tab.slice(0, -1).toUpperCase()} #${id}`;
+            generateFormFields(id);
+            document.getElementById('admin-crud-modal').classList.add('active');
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-crud-modal').classList.remove('active');
+        }
+
+        function generateFormFields(editId = null) {
+            const container = document.getElementById('dynamic-form-fields');
+            container.innerHTML = '';
+
+            if (activeTab === 'users') {
+                const data = editId ? usersData.find(u => u.user_id === editId) : { full_name: '', email: '', phone: '', city: '', password: '' };
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" id="adm-user-name" class="form-input" value="${data.full_name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" id="adm-user-email" class="form-input" value="${data.email}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="text" id="adm-user-phone" class="form-input" value="${data.phone}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">City</label>
+                        <input type="text" id="adm-user-city" class="form-input" value="${data.city}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="text" id="adm-user-pass" class="form-input" value="${data.password}" required>
+                    </div>
+                `;
+            } else if (activeTab === 'events') {
+                const data = editId ? eventsData.find(e => e.event_id === editId) : { event_name: '', category: 'Conference', organizer_name: '', event_date: '', event_time: '', venue: '', ticket_price: '', available_tickets: '' };
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Event Name</label>
+                        <input type="text" id="adm-event-name" class="form-input" value="${data.event_name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select id="adm-event-cat" class="form-select">
+                            <option value="Music Concert" ${data.category === 'Music Concert' ? 'selected' : ''}>Music Concert</option>
+                            <option value="Workshop" ${data.category === 'Workshop' ? 'selected' : ''}>Workshop</option>
+                            <option value="Conference" ${data.category === 'Conference' ? 'selected' : ''}>Conference</option>
+                            <option value="Seminar" ${data.category === 'Seminar' ? 'selected' : ''}>Seminar</option>
+                            <option value="Sports" ${data.category === 'Sports' ? 'selected' : ''}>Sports</option>
+                            <option value="Cultural Event" ${data.category === 'Cultural Event' ? 'selected' : ''}>Cultural Event</option>
+                            <option value="Comedy Show" ${data.category === 'Comedy Show' ? 'selected' : ''}>Comedy Show</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Organizer Name</label>
+                        <input type="text" id="adm-event-org" class="form-input" value="${data.organizer_name}" required>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                        <div class="form-group">
+                            <label class="form-label">Event Date</label>
+                            <input type="date" id="adm-event-date" class="form-input" value="${data.event_date}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Event Time</label>
+                            <input type="time" id="adm-event-time" class="form-input" value="${data.event_time}" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Venue Name</label>
+                        <select id="adm-event-venue" class="form-select">
+                            ${venuesData.map(v => `<option value="${v.venue_name}" ${data.venue === v.venue_name ? 'selected' : ''}>${v.venue_name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                        <div class="form-group">
+                            <label class="form-label">Ticket Price (₹)</label>
+                            <input type="number" id="adm-event-price" class="form-input" value="${data.ticket_price}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Available Tickets</label>
+                            <input type="number" id="adm-event-avail" class="form-input" value="${data.available_tickets}" required>
+                        </div>
+                    </div>
+                `;
+            } else if (activeTab === 'venues') {
+                const data = editId ? venuesData.find(v => v.venue_id === editId) : { venue_name: '', location: '', city: '', capacity: '', contact_person: '' };
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Venue Name</label>
+                        <input type="text" id="adm-venue-name" class="form-input" value="${data.venue_name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Location Address</label>
+                        <input type="text" id="adm-venue-loc" class="form-input" value="${data.location}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">City</label>
+                        <input type="text" id="adm-venue-city" class="form-input" value="${data.city}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Seating Capacity</label>
+                        <input type="number" id="adm-venue-cap" class="form-input" value="${data.capacity}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Contact Person</label>
+                        <input type="text" id="adm-venue-contact" class="form-input" value="${data.contact_person}" required>
+                    </div>
+                `;
+            } else if (activeTab === 'bookings') {
+                const data = bookingsData.find(b => b.booking_id === editId);
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">User Name</label>
+                        <input type="text" id="adm-booking-user" class="form-input" value="${data.user_name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Event Name</label>
+                        <input type="text" id="adm-booking-event" class="form-input" value="${data.event_name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Booking Date</label>
+                        <input type="date" id="adm-booking-date" class="form-input" value="${data.booking_date}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tickets Count</label>
+                        <input type="number" id="adm-booking-count" class="form-input" value="${data.number_of_tickets}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Total Amount</label>
+                        <input type="number" id="adm-booking-amount" class="form-input" value="${data.total_amount}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Booking Status</label>
+                        <select id="adm-booking-status" class="form-select">
+                            <option value="Confirmed" ${data.booking_status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                            <option value="Pending" ${data.booking_status === 'Pending' ? 'selected' : ''}>Pending</option>
+                            <option value="Cancelled" ${data.booking_status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                        </select>
+                    </div>
+                `;
+            } else if (activeTab === 'payments') {
+                const data = paymentsData.find(p => p.payment_id === editId);
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Booking ID</label>
+                        <input type="number" id="adm-pay-booking" class="form-input" value="${data.booking_id}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">User Name</label>
+                        <input type="text" id="adm-pay-user" class="form-input" value="${data.user_name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Transaction ID</label>
+                        <input type="text" id="adm-pay-txn" class="form-input" value="${data.transaction_id}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Amount</label>
+                        <input type="number" id="adm-pay-amount" class="form-input" value="${data.amount}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Payment Method</label>
+                        <input type="text" id="adm-pay-method" class="form-input" value="${data.payment_method}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Payment Date</label>
+                        <input type="date" id="adm-pay-date" class="form-input" value="${data.payment_date}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Payment Status</label>
+                        <select id="adm-pay-status" class="form-select">
+                            <option value="Success" ${data.payment_status === 'Success' ? 'selected' : ''}>Success</option>
+                            <option value="Pending" ${data.payment_status === 'Pending' ? 'selected' : ''}>Pending</option>
+                            <option value="Failed" ${data.payment_status === 'Failed' ? 'selected' : ''}>Failed</option>
+                        </select>
+                    </div>
+                `;
+            }
+        }
+
+        async function handleAdminFormSubmit(e) {
+            e.preventDefault();
+            
+            let payload = {};
+            let endpoint = `/${activeTab}/`;
+            
+            // Extract payloads depending on tab
+            if (activeTab === 'users') {
+                payload = {
+                    full_name: document.getElementById('adm-user-name').value.trim(),
+                    email: document.getElementById('adm-user-email').value.trim(),
+                    phone: document.getElementById('adm-user-phone').value.trim(),
+                    city: document.getElementById('adm-user-city').value.trim(),
+                    password: document.getElementById('adm-user-pass').value
+                };
+            } else if (activeTab === 'events') {
+                payload = {
+                    event_name: document.getElementById('adm-event-name').value.trim(),
+                    category: document.getElementById('adm-event-cat').value,
+                    organizer_name: document.getElementById('adm-event-org').value.trim(),
+                    event_date: document.getElementById('adm-event-date').value,
+                    event_time: document.getElementById('adm-event-time').value,
+                    venue: document.getElementById('adm-event-venue').value,
+                    ticket_price: parseFloat(document.getElementById('adm-event-price').value),
+                    available_tickets: parseInt(document.getElementById('adm-event-avail').value)
+                };
+            } else if (activeTab === 'venues') {
+                payload = {
+                    venue_name: document.getElementById('adm-venue-name').value.trim(),
+                    location: document.getElementById('adm-venue-loc').value.trim(),
+                    city: document.getElementById('adm-venue-city').value.trim(),
+                    capacity: parseInt(document.getElementById('adm-venue-cap').value),
+                    contact_person: document.getElementById('adm-venue-contact').value.trim()
+                };
+            } else if (activeTab === 'bookings') {
+                payload = {
+                    user_name: document.getElementById('adm-booking-user').value.trim(),
+                    event_name: document.getElementById('adm-booking-event').value.trim(),
+                    booking_date: document.getElementById('adm-booking-date').value,
+                    number_of_tickets: parseInt(document.getElementById('adm-booking-count').value),
+                    total_amount: parseFloat(document.getElementById('adm-booking-amount').value),
+                    booking_status: document.getElementById('adm-booking-status').value
+                };
+            } else if (activeTab === 'payments') {
+                payload = {
+                    booking_id: parseInt(document.getElementById('adm-pay-booking').value),
+                    user_name: document.getElementById('adm-pay-user').value.trim(),
+                    transaction_id: document.getElementById('adm-pay-txn').value.trim(),
+                    amount: parseFloat(document.getElementById('adm-pay-amount').value),
+                    payment_method: document.getElementById('adm-pay-method').value.trim(),
+                    payment_date: document.getElementById('adm-pay-date').value,
+                    payment_status: document.getElementById('adm-pay-status').value
+                };
+            }
+
+            try {
+                if (currentEditId) {
+                    // Update PUT API
+                    await apiFetch(`${endpoint}update/${currentEditId}/`, {
+                        method: 'PUT',
+                        body: payload
+                    });
+                    showNotification('Record updated successfully.');
+                } else {
+                    // Create POST API
+                    await apiFetch(`${endpoint}add/`, {
+                        method: 'POST',
+                        body: payload
+                    });
+                    showNotification('Record added successfully.');
+                }
+                
+                closeAdminModal();
+                initAdminPanel(); // Refresh database tables
+            } catch (err) {
+                console.error("Admin submit error:", err);
+            }
+        }
+
+        async function deleteRecord(tab, id) {
+            if (!confirm(`Are you sure you want to delete this record #${id} from ${tab}?`)) {
+                return;
+            }
+
+            try {
+                await apiFetch(`/${tab}/delete/${id}/`, {
+                    method: 'DELETE'
+                });
+                showNotification('Record deleted successfully.');
+                initAdminPanel(); // Refresh
+            } catch (err) {
+                console.error("Admin delete error:", err);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initAdminPanel);
+    </script>
+</body>
+</html>

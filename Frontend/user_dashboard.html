@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard | GatherGo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background Shapes -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+            <span>Gather</span>Go
+        </a>
+        <ul class="nav-links" id="nav-links">
+            <!-- Dynamic navbar links -->
+        </ul>
+        <div class="nav-actions" id="nav-actions">
+            <!-- Dynamic auth actions -->
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container">
+        
+        <header style="margin-bottom: 3rem;">
+            <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;" id="welcome-message">Welcome to your Dashboard</h1>
+            <p style="color: var(--text-secondary);">Manage your event tickets, payments, and notifications.</p>
+        </header>
+
+        <!-- Metric Grid -->
+        <section class="metric-grid">
+            <div class="metric-card">
+                <span class="metric-title">Total Bookings</span>
+                <span class="metric-value" id="metric-total-bookings">0</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-title">Upcoming Events</span>
+                <span class="metric-value" id="metric-upcoming-events" style="color: var(--primary);">0</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-title">Total Money Spent</span>
+                <span class="metric-value" id="metric-total-spent" style="color: var(--accent);">₹0</span>
+            </div>
+        </section>
+
+        <!-- Booking Log -->
+        <section style="margin-bottom: 4rem;">
+            <div class="section-header">
+                <h2 class="section-title">Your Recent Bookings</h2>
+                <a href="booking_history.html" style="color: var(--primary); font-weight: 600; font-size: 0.9rem;">View History</a>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>Event Name</th>
+                            <th>Booking Date</th>
+                            <th>Tickets</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboard-bookings-tbody">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Payment Log -->
+        <section>
+            <div class="section-header">
+                <h2 class="section-title">Payment History Logs</h2>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Payment ID</th>
+                            <th>Booking ID</th>
+                            <th>Transaction ID</th>
+                            <th>Method</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboard-payments-tbody">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 GatherGo. All rights reserved. Made for Full Stack Event Management & Ticket Booking.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        checkAuth('user'); // Enforce Attendee only check
+
+        async function initUserDashboard() {
+            const user = getCurrentUser();
+            document.getElementById('welcome-message').innerText = `Welcome back, ${user.full_name}`;
+
+            try {
+                // Fetch bookings, payments and events
+                const [bookings, payments, events] = await Promise.all([
+                    apiFetch(`/bookings/?user_name=${encodeURIComponent(user.full_name)}`),
+                    apiFetch(`/payments/?user_name=${encodeURIComponent(user.full_name)}`),
+                    apiFetch('/events/')
+                ]);
+
+                // Calculate metrics
+                const todayStr = new Date().toISOString().split('T')[0];
+                
+                const confirmedBookings = bookings.filter(b => b.booking_status === 'Confirmed');
+                
+                let upcomingCount = 0;
+                bookings.forEach(b => {
+                    if (b.booking_status !== 'Cancelled') {
+                        const event = events.find(e => e.event_name === b.event_name);
+                        if (event && event.event_date >= todayStr) {
+                            upcomingCount++;
+                        }
+                    }
+                });
+
+                let totalSpent = 0;
+                payments.forEach(p => {
+                    if (p.payment_status === 'Success') {
+                        totalSpent += p.amount;
+                    }
+                });
+
+                document.getElementById('metric-total-bookings').innerText = bookings.length;
+                document.getElementById('metric-upcoming-events').innerText = upcomingCount;
+                document.getElementById('metric-total-spent').innerText = `₹${totalSpent}`;
+
+                // Render bookings
+                const bookingsTbody = document.getElementById('dashboard-bookings-tbody');
+                bookingsTbody.innerHTML = '';
+                if (bookings.length === 0) {
+                    bookingsTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color:var(--text-muted);">No bookings available.</td></tr>`;
+                } else {
+                    bookings.slice(0, 5).forEach(b => {
+                        const statusClass = b.booking_status === 'Confirmed' ? 'status-confirmed' :
+                                            b.booking_status === 'Pending' ? 'status-pending' : 'status-cancelled';
+                        bookingsTbody.innerHTML += `
+                            <tr>
+                                <td style="font-weight:700;">#${b.booking_id}</td>
+                                <td style="font-weight:600;">${b.event_name}</td>
+                                <td>${b.booking_date}</td>
+                                <td>${b.number_of_tickets}</td>
+                                <td>₹${b.total_amount}</td>
+                                <td><span class="status-badge ${statusClass}">${b.booking_status}</span></td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                // Render payments
+                const paymentsTbody = document.getElementById('dashboard-payments-tbody');
+                paymentsTbody.innerHTML = '';
+                if (payments.length === 0) {
+                    paymentsTbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color:var(--text-muted);">No payment logs available.</td></tr>`;
+                } else {
+                    payments.slice(0, 5).forEach(p => {
+                        const statusClass = p.payment_status === 'Success' ? 'status-success' :
+                                            p.payment_status === 'Pending' ? 'status-pending' : 'status-failed';
+                        paymentsTbody.innerHTML += `
+                            <tr>
+                                <td style="font-weight:700;">#${p.payment_id}</td>
+                                <td style="font-weight:700;">#${p.booking_id}</td>
+                                <td style="color: var(--accent); font-weight:600;">${p.transaction_id}</td>
+                                <td>${p.payment_method}</td>
+                                <td>₹${p.amount}</td>
+                                <td>${p.payment_date}</td>
+                                <td><span class="status-badge ${statusClass}">${p.payment_status}</span></td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                // Push reminder notifications (Bonus Feature - 4 marks)
+                if (upcomingCount > 0) {
+                    const upcomingBooking = bookings.find(b => {
+                        const event = events.find(e => e.event_name === b.event_name);
+                        return event && event.event_date >= todayStr && b.booking_status === 'Confirmed';
+                    });
+                    if (upcomingBooking) {
+                        const event = events.find(e => e.event_name === upcomingBooking.event_name);
+                        setTimeout(() => {
+                            showNotification(`Reminder: You have an upcoming event "${event.event_name}" on ${event.event_date}!`);
+                        }, 2000);
+                    }
+                }
+
+            } catch (err) {
+                console.error("Dashboard error:", err);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initUserDashboard);
+    </script>
+</body>
+</html>

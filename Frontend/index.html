@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GatherGo | Discover & Book Events</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background Shapes -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+            <span>Gather</span>Go
+        </a>
+        <ul class="nav-links" id="nav-links">
+            <!-- Dynamic navbar links loaded from script.js -->
+        </ul>
+        <div class="nav-actions" id="nav-actions">
+            <!-- Dynamic auth actions loaded from script.js -->
+        </div>
+    </nav>
+
+    <!-- Hero Banner -->
+    <header class="hero-banner">
+        <h1 class="hero-title">Experience Moments That Matter</h1>
+        <p class="hero-subtitle">Discover, book, and enjoy the best events, concerts, workshops, and conferences happening around you.</p>
+        
+        <!-- Search Bar -->
+        <div class="search-container">
+            <input type="text" id="home-search-input" class="search-input" placeholder="Search events by name, artist, venue...">
+            <button onclick="handleHomeSearch()" class="search-btn">
+                <i class="fa-solid fa-magnifying-glass"></i> Search
+            </button>
+        </div>
+    </header>
+
+    <!-- Content Container -->
+    <main class="container">
+        
+        <!-- Event Categories -->
+        <section style="margin-bottom: 5rem;">
+            <div class="section-header">
+                <h2 class="section-title">Browse By Category</h2>
+            </div>
+            <div class="category-grid">
+                <div class="category-card" onclick="filterByCategory('Music Concert')">
+                    <span class="category-icon">🎸</span>
+                    <span class="category-name">Music Concert</span>
+                </div>
+                <div class="category-card" onclick="filterByCategory('Workshop')">
+                    <span class="category-icon">🛠️</span>
+                    <span class="category-name">Workshop</span>
+                </div>
+                <div class="category-card" onclick="filterByCategory('Conference')">
+                    <span class="category-icon">🎤</span>
+                    <span class="category-name">Conference</span>
+                </div>
+                <div class="category-card" onclick="filterByCategory('Seminar')">
+                    <span class="category-icon">📚</span>
+                    <span class="category-name">Seminar</span>
+                </div>
+                <div class="category-card" onclick="filterByCategory('Sports')">
+                    <span class="category-icon">⚽</span>
+                    <span class="category-name">Sports</span>
+                </div>
+                <div class="category-card" onclick="filterByCategory('Cultural Event')">
+                    <span class="category-icon">🎭</span>
+                    <span class="category-name">Cultural Event</span>
+                </div>
+                <div class="category-card" onclick="filterByCategory('Comedy Show')">
+                    <span class="category-icon">🎙️</span>
+                    <span class="category-name">Comedy Show</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Events -->
+        <section>
+            <div class="section-header">
+                <h2 class="section-title">Featured Events</h2>
+                <a href="events.html" style="color: var(--primary); font-weight: 600; font-size: 0.95rem;">
+                    View All Events <i class="fa-solid fa-arrow-right" style="margin-left: 0.25rem;"></i>
+                </a>
+            </div>
+            <div class="grid" id="featured-events-grid">
+                <!-- Dynamic cards loading here -->
+                <div style="grid-column: 1/-1; text-align: center; padding: 4rem 0; color: var(--text-secondary);">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem; color: var(--primary);"></i>
+                    <p>Loading featured events...</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 GatherGo. All rights reserved. Made for Full Stack Event Management & Ticket Booking.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        // Load Featured Events
+        async function loadFeaturedEvents() {
+            try {
+                const events = await apiFetch('/events/');
+                const grid = document.getElementById('featured-events-grid');
+                grid.innerHTML = '';
+                
+                if (events.length === 0) {
+                    grid.innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            <i class="fa-regular fa-calendar-times" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                            <p>No events found. Be the first to create one!</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Show up to 3 events as featured
+                const featured = events.slice(0, 3);
+                featured.forEach(event => {
+                    // Choose an emoji based on category
+                    let emoji = '📅';
+                    if (event.category === 'Music Concert') emoji = '🎸';
+                    else if (event.category === 'Workshop') emoji = '🛠️';
+                    else if (event.category === 'Conference') emoji = '🎤';
+                    else if (event.category === 'Seminar') emoji = '📚';
+                    else if (event.category === 'Sports') emoji = '⚽';
+                    else if (event.category === 'Cultural Event') emoji = '🎭';
+                    else if (event.category === 'Comedy Show') emoji = '🎙️';
+                    
+                    grid.innerHTML += `
+                        <div class="card">
+                            <div class="card-img-container">
+                                <div class="card-img-placeholder">${emoji}</div>
+                                <span class="card-category">${event.category}</span>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="card-title">${event.event_name}</h3>
+                                <div class="card-meta">
+                                    <i class="fa-solid fa-calendar-days"></i>
+                                    <span>${event.event_date} at ${event.event_time}</span>
+                                </div>
+                                <div class="card-meta">
+                                    <i class="fa-solid fa-location-dot"></i>
+                                    <span>${event.venue}</span>
+                                </div>
+                                <div class="card-meta">
+                                    <i class="fa-solid fa-ticket"></i>
+                                    <span>${event.available_tickets} tickets left</span>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <div class="card-price">
+                                    ₹${event.ticket_price}<span>/ticket</span>
+                                </div>
+                                <a href="event_details.html?id=${event.event_id}" class="btn btn-primary btn-sm">Book Now</a>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (err) {
+                console.error("Failed to load featured events:", err);
+            }
+        }
+
+        function handleHomeSearch() {
+            const query = document.getElementById('home-search-input').value.trim();
+            if (query) {
+                window.location.href = `events.html?search=${encodeURIComponent(query)}`;
+            }
+        }
+
+        function filterByCategory(category) {
+            window.location.href = `events.html?category=${encodeURIComponent(category)}`;
+        }
+
+        // Initialize page content
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFeaturedEvents();
+            
+            // Enter key trigger for search
+            document.getElementById('home-search-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleHomeSearch();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

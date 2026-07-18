@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | GatherGo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background Shapes -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i>
+            <span>Gather</span>Go
+        </a>
+    </nav>
+
+    <!-- Auth Wrapper -->
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2 class="auth-title">Create Account</h2>
+                <p class="auth-subtitle">Join us to discover and book amazing events</p>
+            </div>
+            
+            <form id="register-form" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="reg-name" class="form-label">Full Name</label>
+                    <input type="text" id="reg-name" class="form-input" placeholder="Rahul Sharma" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-email" class="form-label">Email Address</label>
+                    <input type="email" id="reg-email" class="form-input" placeholder="rahul@gmail.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-phone" class="form-label">Phone Number</label>
+                    <input type="tel" id="reg-phone" class="form-input" placeholder="9876543210" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-city" class="form-label">City</label>
+                    <input type="text" id="reg-city" class="form-input" placeholder="Hyderabad" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-role" class="form-label">Register As</label>
+                    <select id="reg-role" class="form-select">
+                        <option value="user">Attendee / User</option>
+                        <option value="organizer">Event Organizer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reg-password" class="form-label">Password</label>
+                    <input type="password" id="reg-password" class="form-input" placeholder="••••••••" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                    Sign Up
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="login.html">Sign In</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        async function handleRegister(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('reg-name').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const phone = document.getElementById('reg-phone').value.trim();
+            const city = document.getElementById('reg-city').value.trim();
+            const role = document.getElementById('reg-role').value;
+            const password = document.getElementById('reg-password').value;
+            
+            try {
+                // Call users/add API
+                const payload = {
+                    full_name: name,
+                    email: email,
+                    phone: phone,
+                    city: city,
+                    password: password
+                };
+                
+                const user = await apiFetch('/users/add/', {
+                    method: 'POST',
+                    body: payload
+                });
+                
+                // Add the role locally since backend doesn't save roles
+                user.role = role;
+                setCurrentUser(user);
+                
+                showNotification('Registration successful!');
+                
+                // Redirect depending on registered role
+                setTimeout(() => {
+                    if (role === 'organizer') {
+                        window.location.href = 'organizer_dashboard.html';
+                    } else {
+                        window.location.href = 'user_dashboard.html';
+                    }
+                }, 1000);
+            } catch (err) {
+                console.error("Register Error:", err);
+            }
+        }
+
+        // Redirect if already logged in
+        document.addEventListener('DOMContentLoaded', () => {
+            if (getCurrentUser()) {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>
